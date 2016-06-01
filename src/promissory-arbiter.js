@@ -226,7 +226,7 @@
     options = merge(state.options, options);
 
     var args = [state, topic, data, options];
-    if (options.sync) {
+    if (options.sync || options.noPromises) {
       return hierarchicalTopicDispatcher(state, topic, data, options);
     }
 
