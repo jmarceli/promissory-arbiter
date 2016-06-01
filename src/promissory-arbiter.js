@@ -402,6 +402,7 @@
     var
       topics = createNode(''),
       options = {
+        no_promises: false,
         persist: false,
         sync: false,
         preventBubble: false,
@@ -441,11 +442,32 @@
       subscriptions = options.preventBubble
         ? topicNode.topic === topic ? topicNode.subscriptions : []
         : mergeBy(getFingerArrayPriority, map(getSubscriptions, lineage)),
+      fulfilledPromise = null;
+
+    if (!options.no_promises) {
       fulfilledPromise = subscriptionDispatcher(
         topic, data, options, subscriptions
       );
+    }
+    else {
+      fulfilledPromise = [];
+      for (var i = 0; i < subscriptions.length; i++) {
+        var subscription = subscriptions[i];
+        if (!subscription.suspended) {
+          //subscriptionInvoker(subscription, data, topic).then(fulfill, reject);
+          fulfilledPromise.push(subscription.fn.call(
+            subscription.context, data, topic, function callback (err, succ) {
+              return err ? reject(err) : fulfill(succ);
+            }
+          ));
+        }
+      }
+    }
 
     if (options.persist) {
+      if (options.no_promises) {
+        throw new Error("options.persist doesn't work with options.no_promises");
+      }
       var id = state.id();
 
       topicNode = addTopicLine(topic, topicNode);
