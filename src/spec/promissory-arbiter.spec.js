@@ -320,6 +320,35 @@ describe('Arbiter', function () {
           expect(spy2).toHaveBeenCalled();
         });
 
+        describe('noPromises', function () {
+          it('invokes subscribes without generating Promise', function () {
+            var spy = jasmine.createSpy().and.callFake(function () {
+              expect(arbiter).not.toBe(spy);
+            });
+
+            sub('aa', spy);
+            expect(pub('aa', null, {noPromises: true}) instanceof Promise).toBe(false);
+            expect(spy).toHaveBeenCalled();
+          });
+
+          it('allows late subscribers to recieve persisted topics', function () {
+            expect(p1so('aa.bb.cc', 'aa.bb.cc', {persist: true, noPromises: true})).toHaveBeenCalled();
+          });
+
+          it('late subscribers recieve persisted children topics', function () {
+            expect(p1so('x.y.z', 'x', {persist: true, noPromises: true})).toHaveBeenCalled();
+          });
+
+          it('persisted topics are published in the orginal order', function () {
+            pub('xx.yy.zz', null, {persist: true, noPromises: true});
+            var spy = p1so('xx', 'xx', {persist: true, noPromises: true});
+
+            expect(spy).toHaveBeenCalled();
+            expect(spy.calls.first().args[1]).toBe('xx.yy.zz');
+            expect(spy.calls.mostRecent().args[1]).toBe('xx');
+          });
+        });
+
         it('sync invokes subscribers synchronously', function () {
           var spy = jasmine.createSpy().and.callFake(function () {
             expect(arbiter).not.toBe(spy);
@@ -751,8 +780,10 @@ describe('Arbiter', function () {
     }
 
     // Publish 1 Subscribe Other
-    function p1so (topic1, topic2) {
-      pub(topic1, null, {persist: true});
+    function p1so (topic1, topic2, options) {
+      options = typeof options !== 'undefined' ? options : {persist: true};
+
+      pub(topic1, null, options);
       var spy = sub(topic2);
       return spy;
     }
